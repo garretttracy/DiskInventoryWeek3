@@ -1,27 +1,31 @@
 /*
 MOD LOG
-
 Added DROP and CREATE DATABASE queries 10/4
 Added Table and column definitions 10/4
 Modified DROP clause to use master, this prevents SQL from throwing a database in use error 10/4
 Added diskUserGT 10/4
 added DROP LOGIN // DROP USER clause 10/4
 Gave diskUserGT permission to read out of database 10/4
-
 Deleted Band table 10/11
 Deleted DiskArtist table 10/11
 Replaced DiskArtist table with DiskHasArtist table 10/11
 Removed references and relationships to deleted variables 10/11
 Improved DROP logic 10/11
-Added data into Inventory, 
+Added data into various tables 10/11
+
+Added BEGIN and END clause to IF statement 10/18
+Changed Artist table to include bands as well as individual artists 10/18
+Added various queries + a view to browse database information 10/18
 */
 
 --If database already exists, this will delete and begin the rebuild process
 use master;
+GO
 if DB_ID('disk_inventoryGT') is not null
+BEGIN
 DROP DATABASE disk_inventoryGT
 DROP LOGIN diskUserGT
-
+END
 go
 
 CREATE DATABASE disk_inventoryGT;
@@ -56,7 +60,8 @@ CREATE TABLE Borrow_details(
 CREATE TABLE Artist(
 	Artist_ID int NOT NULL identity primary key,
 	Artist_fname varchar(25) NOT NULL,
-	Artist_lname varchar(25) NOT NULL
+	Artist_lname varchar(25) NULL, 
+	Artist_type varchar(12) NOT NULL
 );
 
 
@@ -164,27 +169,27 @@ VALUES (1, 1, '05/05/1996', '01/23/1997'),
 		(3, 13, '05/05/1996', '01/23/1997');
 
 --This inserts data into the Artist table
-INSERT INTO Artist (Artist_fname, Artist_lname)
-VALUES ('Jhonn', 'Balance'),
-		('Peter', 'Christopherson'),
-		('Chris', 'Carter'),
-		('Fanni', 'Cosey'),
-		('Genesis', 'P-Orridge'),
-		('Monte', 'Cazazza'),
-		('William', 'Bennett'),
-		('Masami', 'Akita'),
-		('Lou', 'Reed'),
-		('John', 'Cale'),
-		('Sterling', 'Morrison'),
-		('Moe', 'Tucker'),
-		('Wolfgang', 'Voigt'),
-		('Susumu', 'Hirasawa'),
-		('Dominick', 'Fernow'),
-		('Aaron', 'Funk'),
-		('Richard', 'James'),
-		('Thomas', 'Bangalter'),
-		('Guy', 'Hommem De Christo'),
-		('Brian', 'Eno');
+INSERT INTO Artist (Artist_fname, Artist_lname, Artist_type)
+VALUES ('Jhonn', 'Balance', 'Individual'),
+		('Peter', 'Christopherson', 'Individual'),
+		('Chris', 'Carter', 'Individual'),
+		('Fanni', 'Cosey', 'Individual'),
+		('Genesis', 'P-Orridge', 'Individual'),
+		('Monte', 'Cazazza', 'Individual'),
+		('William', 'Bennett', 'Individual'),
+		('Masami', 'Akita', 'Individual'),
+		('Lou', 'Reed', 'Individual'),
+		('John', 'Cale', 'Individual'),
+		('Sterling', 'Morrison', 'Individual'),
+		('Moe', 'Tucker', 'Individual'),
+		('Gas', NULL, 'Band'),
+		('Queen', NULL, 'Band'),
+		('Dominick', 'Fernow', 'Individual'),
+		('Aaron', 'Funk', 'Individual'),
+		('Richard', 'James', 'Individual'),
+		('Thomas', 'Bangalter', 'Individual'),
+		('Guy', 'Hommem De Christo', 'Individual'),
+		('Brian', 'Eno', 'Individual');
 
 --This inserts data into the DiskHasArtist table (watch for reqs)
 INSERT INTO Disk_Has_Artist (Inventory_ID, Artist_ID)
@@ -239,3 +244,57 @@ WHERE CD_Name = 'The Third Annual Report of Throbbing Gristle';
 SELECT *
 FROM Borrow_details
 WHERE Returned_Date IS NULL;
+
+--3. Show the disks in your database and any associated Individual artists only. Sort by Artist Last Name, First Name & Disk Name.
+USE disk_inventoryGT
+SELECT CD_Name AS 'Disk Name', CONVERT(varchar(10), Release_Date, 101) AS 'Release Date', Artist_fname AS 'ArtistFirstName', Artist_lname AS 'ArtistLastName'
+FROM CD 
+JOIN Disk_Has_Artist ON CD.CD_ID = Disk_Has_Artist.Inventory_ID
+JOIN Artist ON Disk_Has_Artist.Artist_ID = Artist.Artist_ID
+WHERE Artist.Artist_type = 'Individual'
+ORDER BY Artist_lname, Artist_fname, 'Disk Name'
+
+--4. Create a view called View_Individual_Artist that shows the artists’ names and not group names. Include the artist id in the view definition but do not display the id in your output
+DROP VIEW IF EXISTS View_Individual_Artists;
+GO
+CREATE VIEW View_Individual_Artists AS
+SELECT Artist_ID, Artist_fname, Artist_lname
+FROM Artist
+WHERE Artist_type = 'Individual';
+
+GO
+SELECT Artist_fname AS FirstName, Artist_lname AS LastName
+FROM View_Individual_Artists
+
+--5. Show the disks in your database and any associated Group artists only. Use the View_Individual_Artist view. Sort by Group Name & Disk Name.
+SELECT CD_Name as 'Disk Name', CONVERT(varchar(10), Release_Date, 101) AS 'Release Date', Artist_fname AS 'Group Name'
+FROM CD
+JOIN Disk_Has_Artist ON CD.CD_ID = Disk_Has_Artist.Inventory_ID
+JOIN Artist ON Disk_Has_Artist.Artist_ID = Artist.Artist_ID
+WHERE Artist_type = 'Band'
+ORDER BY Artist_fname, 'Disk Name'
+GO
+
+--6. Show which disks have been borrowed and who borrowed them. Sort by Borrower’s Last Name, then First Name, then Disk Name, then Borrowed Date, then Returned Date.
+SELECT First_Name AS 'First', Last_Name AS 'Last', CD_Name AS 'Disk Name', Borrowed_Date AS 'Borrowed Date', Returned_Date AS 'Returned Date'
+FROM Borrower
+JOIN Borrow_details ON Borrower.Borrower_ID = Borrow_details.Borrow_ID
+JOIN Inventory ON Borrow_details.Inventory_ID = Inventory. Inventory_ID
+JOIN CD ON Inventory.Inventory_ID = CD.CD_ID
+WHERE Inventory.status = 'Not Returned'
+ORDER BY Last_Name, First_Name, CD_Name, Borrowed_Date, Returned_Date
+--7. In disk_id order, show the number of times each disk has been borrowed.
+SELECT CD_ID AS 'DiskId', CD_Name AS 'Disk Name', COUNT(*) AS 'Times Borrowed'
+FROM CD
+JOIN Inventory ON CD.CD_ID = Inventory.Inventory_ID
+JOIN Borrow_details ON Inventory.Inventory_ID = Borrow_details.Inventory_ID
+GROUP BY CD.CD_ID, CD_Name
+ORDER BY CD_ID
+--8. Show the disks outstanding or on-loan and who has each disk. Sort by disk name.
+SELECT CD_Name AS 'Disk Name', Borrowed_Date AS 'Borrowed', Returned_Date AS 'Returned', Last_Name AS 'Last Name'
+FROM Borrower
+JOIN Borrow_details ON Borrower.Borrower_ID = Borrow_details.Borrow_ID
+JOIN Inventory ON Borrow_details.Inventory_ID = Inventory. Inventory_ID
+JOIN CD ON Inventory.Inventory_ID = CD.CD_ID
+WHERE Borrow_details.Returned_Date IS NULL
+ORDER BY CD_Name
