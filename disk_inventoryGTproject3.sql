@@ -16,6 +16,10 @@ Added data into various tables 10/11
 Added BEGIN and END clause to IF statement 10/18
 Changed Artist table to include bands as well as individual artists 10/18
 Added various queries + a view to browse database information 10/18
+
+Added INSERT/UPDATE stored procedures for Artist table 10/22
+Added INSERT/UPDATE stored procedures for Borrower table 10/23
+Added INSERT/UPDATE stored procedures for CD table 10/23
 */
 
 --If database already exists, this will delete and begin the rebuild process
@@ -298,3 +302,271 @@ JOIN Inventory ON Borrow_details.Inventory_ID = Inventory. Inventory_ID
 JOIN CD ON Inventory.Inventory_ID = CD.CD_ID
 WHERE Borrow_details.Returned_Date IS NULL
 ORDER BY CD_Name
+
+--PROJECT 5
+--2.
+--Create Insert, Update, and Delete stored procedures for the artist table. Update procedure accepts a primary key value and the artist’s names for update. Insert accepts all columns as input parameters except for identity fields. Delete accepts a primary key value for delete.
+USE disk_inventoryGT;
+GO
+--INSERT artist stored procedure
+DROP PROC IF EXISTS sp_InsArtist;
+GO
+
+CREATE PROC sp_InsArtist
+	@Artist_fname nvarchar(25),
+	@Artist_type nvarchar(12),
+	@Artist_lname nvarchar(25) = NULL
+AS
+--Error handling
+BEGIN TRY
+	INSERT INTO [dbo].[Artist]
+			   ([Artist_fname]
+			   ,[Artist_type]
+			   ,[Artist_lname])
+		 VALUES
+			   (@Artist_fname
+			   ,@Artist_type
+			   ,@Artist_lname)
+END TRY
+
+BEGIN CATCH
+		PRINT 'An error occurred. Row was not inserted.';
+		PRINT 'Error number: ' +
+        CONVERT(varchar(100), ERROR_NUMBER());
+		PRINT 'Error message: ' +
+        CONVERT(varchar(1000), ERROR_MESSAGE());
+END CATCH
+GO
+--stored procedure execution
+EXEC sp_InsArtist 'Cher', 'Individual'
+GO
+
+--UPDATE artist stored procedure
+DROP PROC IF EXISTS sp_UpdArtist;
+GO
+
+CREATE PROC sp_UpdArtist
+	@Artist_ID int,
+	@Artist_fname nvarchar(25),
+	@Artist_type nvarchar(12),
+	@Artist_lname nvarchar(25) = NULL
+AS
+--error handling
+BEGIN TRY
+	UPDATE [dbo].[Artist]
+	   SET [Artist_fname] = @Artist_fname
+		  ,[Artist_type] = @Artist_type
+		  ,[Artist_lname] = @Artist_lname
+	 WHERE Artist_ID = @Artist_ID
+END TRY
+
+BEGIN CATCH
+		PRINT 'An error occurred. Row was not updated.';
+		PRINT 'Error number: ' +
+        CONVERT(varchar(100), ERROR_NUMBER());
+		PRINT 'Error message: ' +
+        CONVERT(varchar(1000), ERROR_MESSAGE());
+END CATCH
+GO
+--stored procedure execution
+EXEC sp_UpdArtist 21, 'Bruno', 'Individual', 'Mars'
+GO
+--DELETE artist stored procedure
+DROP PROC IF EXISTS sp_DelArtist;
+GO
+CREATE PROC sp_DelArtist
+	@Artist_ID int
+AS
+--error handling
+BEGIN TRY
+	DELETE FROM [dbo].[Artist]
+	WHERE Artist_ID = @Artist_ID
+END TRY
+BEGIN CATCH
+PRINT 'An error occurred. Row was not deleted.';
+		PRINT 'Error number: ' +
+        CONVERT(varchar(100), ERROR_NUMBER());
+		PRINT 'Error message: ' +
+        CONVERT(varchar(1000), ERROR_MESSAGE());
+END CATCH
+GO
+--stored procedure execution
+EXEC sp_DelArtist 21
+GO
+
+--Create Insert, Update, and Delete stored procedures for the borrower table. Update procedure accepts a primary key value and the borrower’s names for update. Insert accepts all columns as input parameters except for identity fields. Delete accepts a primary key value for delete.
+USE disk_inventoryGT;
+GO
+--INSERT to borrower stored procedure
+DROP PROC IF EXISTS sp_InsBorrower;
+GO
+
+CREATE PROC sp_InsBorrower
+	@First_Name nvarchar(20),
+	@Last_Name nvarchar(20),
+	@Borrower_Phone_Number nvarchar(18)
+AS
+--error handling
+BEGIN TRY
+	INSERT INTO [dbo].[Borrower]
+			   ([First_Name]
+			   ,[Last_Name]
+			   ,[Borrower_Phone_Number])
+		 VALUES
+			   (@First_Name
+			   ,@Last_Name
+			   ,@Borrower_Phone_Number)
+END TRY
+
+BEGIN CATCH
+		PRINT 'An error occurred. Row was not inserted.';
+		PRINT 'Error number: ' +
+        CONVERT(varchar(100), ERROR_NUMBER());
+		PRINT 'Error message: ' +
+        CONVERT(varchar(1000), ERROR_MESSAGE());
+END CATCH
+GO
+--stored procedure execution
+EXEC sp_InsBorrower'Cher', 'the musician', '(123)456-6780'
+GO
+
+-- UPDATE to borrower stored procedure
+
+DROP PROC IF EXISTS sp_UpdBorrower;
+GO
+
+CREATE PROC sp_UpdBorrower
+	@Borrower_ID int,
+	@First_Name nvarchar(20),
+	@Last_Name nvarchar(20),
+	@Borrower_Phone_Number nvarchar(18)
+AS
+--error handling
+BEGIN TRY
+	UPDATE [dbo].[Borrower]
+	   SET [First_Name] = @First_Name
+		  ,[Last_Name] = @Last_Name
+		  ,[Borrower_Phone_Number] = @Borrower_Phone_Number
+	 WHERE Borrower_ID = @Borrower_ID
+END TRY
+
+BEGIN CATCH
+		PRINT 'An error occurred. Row was not updated.';
+		PRINT 'Error number: ' +
+        CONVERT(varchar(100), ERROR_NUMBER());
+		PRINT 'Error message: ' +
+        CONVERT(varchar(1000), ERROR_MESSAGE());
+END CATCH
+GO
+--stored procedure execution
+EXEC sp_UpdBorrower 21, 'Bruno', 'Mars', '(765)123-3456'
+GO
+
+--DELETE from borrower stored procedure
+DROP PROC IF EXISTS sp_DelBorrower;
+GO
+CREATE PROC sp_DelBorrower
+	@Borrower_ID int
+AS
+--error handling
+BEGIN TRY
+	DELETE FROM [dbo].[Borrower]
+	WHERE Borrower_ID = @Borrower_ID
+END TRY
+BEGIN CATCH
+PRINT 'An error occurred. Row was not deleted.';
+		PRINT 'Error number: ' +
+        CONVERT(varchar(100), ERROR_NUMBER());
+		PRINT 'Error message: ' +
+        CONVERT(varchar(1000), ERROR_MESSAGE());
+END CATCH
+GO
+--stored procedure execution
+EXEC sp_DelBorrower 21
+GO
+
+--Create Insert, Update, and Delete stored procedures for the disk table. Update procedure accepts a primary key value and the disk information for update. Insert accepts all columns as input parameters except for identity fields. Delete accepts a primary key value for delete.
+USE disk_inventoryGT;
+GO
+--INSERT to CD stored procedure
+DROP PROC IF EXISTS sp_InsCD;
+GO
+
+CREATE PROC sp_InsCD
+	@CD_Name nvarchar(100),
+	@Release_Date date,
+	@Genre nvarchar(25)
+AS
+--error handling
+BEGIN TRY
+	INSERT INTO [dbo].[CD]
+			   ([CD_Name]
+			   ,[Release_Date]
+			   ,[Genre])
+		 VALUES
+			   (@CD_Name
+			   ,@Release_Date
+			   ,@Genre)
+END TRY
+BEGIN CATCH
+		PRINT 'An error occurred. Row was not inserted.';
+		PRINT 'Error number: ' +
+        CONVERT(varchar(100), ERROR_NUMBER());
+		PRINT 'Error message: ' +
+        CONVERT(varchar(1000), ERROR_MESSAGE());
+END CATCH
+GO
+--stored procedure execution
+EXEC sp_InsCD 'The Kick Inside', '02/17/1978', 'Pop'
+GO
+
+--UPDATE to CD stored procedure
+DROP PROC IF EXISTS sp_UpdCD;
+GO
+CREATE PROC sp_UpdCD
+	@CD_ID int,
+	@CD_Name nvarchar(100),
+	@Release_Date date,
+	@Genre nvarchar(25)
+AS
+--error handling
+BEGIN TRY
+	UPDATE [dbo].[CD]
+	   SET [CD_Name] = @CD_Name
+		  ,[Release_Date] = @Release_Date
+		  ,[Genre] = @Genre
+	 WHERE CD_ID = @CD_ID
+END TRY
+BEGIN CATCH
+		PRINT 'An error occurred. Row was not updated.';
+		PRINT 'Error number: ' +
+        CONVERT(varchar(100), ERROR_NUMBER());
+		PRINT 'Error message: ' +
+        CONVERT(varchar(1000), ERROR_MESSAGE());
+END CATCH
+GO
+--stored procedure execution
+EXEC sp_UpdCD 21, 'Filth', '01/01/1983', 'Experimental Rock'
+GO
+--DELETE from CD stored procedure
+DROP PROC IF EXISTS sp_DelCD;
+GO
+CREATE PROC sp_DelCD
+	@CD_ID int
+AS
+--error handling
+BEGIN TRY
+	DELETE FROM [dbo].[CD]
+	WHERE CD_ID = @CD_ID
+END TRY
+BEGIN CATCH
+PRINT 'An error occurred. Row was not deleted.';
+		PRINT 'Error number: ' +
+        CONVERT(varchar(100), ERROR_NUMBER());
+		PRINT 'Error message: ' +
+        CONVERT(varchar(1000), ERROR_MESSAGE());
+END CATCH
+GO
+--stored procedure execution
+EXEC sp_DelCD 21
+GO
